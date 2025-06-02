@@ -9,9 +9,10 @@ import StartScreen from './components/StartScreen';
 import GameOverModal from './components/GameOverModal';
 import LoginPage from './components/LoginPage';
 import LeaderboardPage from './components/LeaderboardPage';
-import Joystick from './components/Joystick'; // Import Joystick
+import Joystick from './components/Joystick';
+import ControlButtons from './components/ControlButtons'; // Import ControlButtons
 import { AuthProvider, useAuth } from './contexts/AuthContext';
-import { GameState, AppView, ControlMode, Direction } from './types'; // Added ControlMode, Direction
+import { GameState, AppView, ControlMode, Direction } from './types';
 import { COLORS } from './constants';
 
 const AppContent: React.FC = () => {
@@ -35,11 +36,17 @@ const AppContent: React.FC = () => {
 
   const gameAreaRef = useRef<HTMLDivElement>(null);
   useKeyboardControls({ changeDirection, gameState });
-  useSwipeControls({ 
-    changeDirection, 
-    targetRef: gameAreaRef, 
+
+  const isMobile = useCallback(() => {
+    // Simple check, can be more sophisticated
+    return typeof window !== 'undefined' && (window.innerWidth <= 768 || navigator.maxTouchPoints > 0);
+  }, []);
+
+  useSwipeControls({
+    changeDirection,
+    targetRef: gameAreaRef,
     gameState,
-    enabled: controlMode === ControlMode.SWIPE && gameState === GameState.PLAYING // Only enable swipe if mode is SWIPE and playing
+    enabled: isMobile() && controlMode === ControlMode.SWIPE && gameState === GameState.PLAYING
   });
 
   const [boardPixelSize, setBoardPixelSize] = useState(300);
@@ -48,27 +55,26 @@ const AppContent: React.FC = () => {
     const calculateBoardSize = () => {
       const mainContentAreaQuery = gameAreaRef.current?.querySelector('#main-content-area') as HTMLElement | null;
       const containerElement = mainContentAreaQuery || gameAreaRef.current || document.body;
-      
+
       const availableWidth = containerElement.offsetWidth;
-      // Estimate header/footer or other vertical elements height. This is a rough estimate.
-      // Consider joystick height if visible. For now, assume it overlays.
-      const otherElementsHeight = window.innerHeight * (appView === AppView.GAME ? 0.28 : 0.20); 
+      let otherElementsHeight = window.innerHeight * (appView === AppView.GAME ? 0.28 : 0.20);
+      if (isMobile() && (controlMode === ControlMode.JOYSTICK || controlMode === ControlMode.BUTTONS) && appView === AppView.GAME) {
+        otherElementsHeight += 80; // Approximate height for joystick/buttons area
+      }
       const availableHeight = window.innerHeight - otherElementsHeight;
 
-      const sizeBasedOnWidth = availableWidth * 0.9; 
-      const sizeBasedOnHeight = availableHeight * (appView === AppView.GAME ? 0.75 : 0.7); 
+      const sizeBasedOnWidth = availableWidth * 0.9;
+      const sizeBasedOnHeight = availableHeight * (appView === AppView.GAME ? 0.75 : 0.7);
 
       let size = Math.min(sizeBasedOnWidth, sizeBasedOnHeight, 500);
-      // Ensure size is positive and sensible before calculation
-      size = Math.max(size, 200); // Minimum board size
+      size = Math.max(size, 200);
       setBoardPixelSize(Math.floor(size / gridSize) * gridSize);
     };
-    
+
     calculateBoardSize();
     window.addEventListener('resize', calculateBoardSize);
-    // Recalculate on view change as layout might differ
     return () => window.removeEventListener('resize', calculateBoardSize);
-  }, [gridSize, appView, gameState, controlMode]); // controlMode might influence layout indirectly if UI changes
+  }, [gridSize, appView, gameState, controlMode, isMobile]);
 
   const handleStartGame = () => {
     startGame();
@@ -84,15 +90,15 @@ const AppContent: React.FC = () => {
   };
 
   const handleGoToMenu = () => {
-    resetGame(); 
-    setGameState(GameState.IDLE); 
+    resetGame();
+    setGameState(GameState.IDLE);
     setAppView(AppView.START_SCREEN);
   };
-  
+
   const handleRestartGame = () => {
     resetGame();
-    startGame(); 
-    setAppView(AppView.GAME); 
+    startGame();
+    setAppView(AppView.GAME);
   };
 
   useEffect(() => {
@@ -108,7 +114,7 @@ const AppContent: React.FC = () => {
       setIsGameOverFlashing(true);
       const timer = setTimeout(() => {
         setIsGameOverFlashing(false);
-      }, 300); 
+      }, 300);
       return () => clearTimeout(timer);
     }
   }, [gameState]);
@@ -116,21 +122,16 @@ const AppContent: React.FC = () => {
   if (appView === AppView.LOGIN) {
     return <LoginPage />;
   }
-  
-  const isMobile = () => {
-    // Simple check, can be more sophisticated
-    return window.innerWidth <= 768 || navigator.maxTouchPoints > 0;
-  }
 
   return (
-    <div 
-      ref={gameAreaRef} 
+    <div
+      ref={gameAreaRef}
       className={`min-h-screen ${COLORS.BACKGROUND} flex flex-col items-center justify-center p-2 sm:p-4 touch-none select-none overflow-hidden w-full ${isGameOverFlashing ? 'game-over-flash-active' : ''}`}
     >
       <div id="main-content-area" className="w-full h-full flex flex-col items-center justify-center">
         {appView === AppView.START_SCREEN && (
-          <StartScreen 
-            onStartGame={handleStartGame} 
+          <StartScreen
+            onStartGame={handleStartGame}
             onShowLeaderboard={handleShowLeaderboard}
             onLogout={handleLogout}
             username={currentUser?.username || null}
@@ -138,16 +139,22 @@ const AppContent: React.FC = () => {
             onSetControlMode={setControlMode}
           />
         )}
-        
+
         {appView === AppView.GAME && gameState === GameState.PLAYING && (
           <>
             <ScoreDisplay score={score} userHighScore={userHighScore} username={currentUser?.username} />
             <GameBoard snake={snake} food={food} boardSize={boardPixelSize} />
             {isMobile() && controlMode === ControlMode.JOYSTICK && (
-              <Joystick 
-                onChangeDirection={changeDirection} 
-                size={120} 
-                disabled={gameState !== GameState.PLAYING} 
+              <Joystick
+                onChangeDirection={changeDirection}
+                size={120}
+                disabled={gameState !== GameState.PLAYING}
+              />
+            )}
+            {isMobile() && controlMode === ControlMode.BUTTONS && (
+              <ControlButtons
+                onChangeDirection={changeDirection}
+                disabled={gameState !== GameState.PLAYING}
               />
             )}
             <p className={`mt-4 text-xs ${COLORS.TEXT_MUTED} font-mono hidden md:block`}>Use Arrow Keys or WASD to move.</p>
@@ -157,13 +164,16 @@ const AppContent: React.FC = () => {
              {isMobile() && controlMode === ControlMode.JOYSTICK && (
               <p className={`mt-2 text-xs ${COLORS.TEXT_MUTED} font-mono`}>Use Joystick to move.</p>
             )}
+            {isMobile() && controlMode === ControlMode.BUTTONS && (
+              <p className={`mt-2 text-xs ${COLORS.TEXT_MUTED} font-mono`}>Use On-Screen Buttons to move.</p>
+            )}
           </>
         )}
 
         {gameState === GameState.GAME_OVER && !isGameOverFlashing && (
-          <GameOverModal 
-            score={score} 
-            userHighScore={userHighScore} 
+          <GameOverModal
+            score={score}
+            userHighScore={userHighScore}
             onRestart={handleRestartGame}
             onGoToMenu={handleGoToMenu}
           />

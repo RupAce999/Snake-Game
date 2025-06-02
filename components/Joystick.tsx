@@ -13,7 +13,7 @@ const Joystick: React.FC<JoystickProps> = ({ onChangeDirection, size = 120, disa
   const [isDragging, setIsDragging] = useState(false);
   const [knobPosition, setKnobPosition] = useState({ x: 0, y: 0 });
 
-  const deadZone = 0.1; // 10% dead zone
+  const deadZone = 0.01; // Reduced from 0.1 to 0.01 for more sensitivity
   const knobSize = size * 0.4; // Knob is 40% of the base size
   const maxKnobOffset = (size - knobSize) / 2;
 

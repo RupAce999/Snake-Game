@@ -41,4 +41,5 @@ export enum AppView {
 export enum ControlMode {
   SWIPE,
   JOYSTICK,
+  BUTTONS, // Added new control mode
 }
