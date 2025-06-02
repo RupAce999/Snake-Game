@@ -25,6 +25,8 @@ const getLeaderboard = (): LeaderboardEntry[] => {
 };
 
 const updateLeaderboard = (username: string, newScore: number): LeaderboardEntry[] => {
+  // Updates the global leaderboard, including all players' scores stored locally
+  // in the current browser.
   let leaderboard = getLeaderboard();
   const userIndex = leaderboard.findIndex(entry => entry.username === username);
 
@@ -37,7 +39,7 @@ const updateLeaderboard = (username: string, newScore: number): LeaderboardEntry
   }
 
   leaderboard.sort((a, b) => b.score - a.score);
-  // Removed slicing: leaderboard = leaderboard.slice(0, LEADERBOARD_LIMIT);
+  // The updated leaderboard, containing all players from local storage, is saved.
   localStorage.setItem(LOCAL_STORAGE_KEYS.LEADERBOARD, JSON.stringify(leaderboard));
   return leaderboard;
 };

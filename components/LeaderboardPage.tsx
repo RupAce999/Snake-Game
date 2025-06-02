@@ -11,6 +11,7 @@ const LeaderboardPage: React.FC<LeaderboardPageProps> = ({ onBackToMenu }) => {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
 
   const fetchLeaderboard = useCallback(() => {
+    // Fetches all scores for all players recorded in this browser's local storage.
     const savedLeaderboard = localStorage.getItem(LOCAL_STORAGE_KEYS.LEADERBOARD);
     if (savedLeaderboard) {
       try {
@@ -25,8 +26,9 @@ const LeaderboardPage: React.FC<LeaderboardPageProps> = ({ onBackToMenu }) => {
   }, []);
 
   useEffect(() => {
-    fetchLeaderboard();
+    fetchLeaderboard(); // Initial fetch on component mount.
 
+    // Listen for storage events to sync leaderboard if changed in another tab.
     const handleStorageChange = (event: StorageEvent) => {
       if (event.key === LOCAL_STORAGE_KEYS.LEADERBOARD) {
         fetchLeaderboard();
